@@ -213,8 +213,14 @@ Uske baad Rojmel ka icon home screen pe aa jayega 📱
 </div>
 <div class="card">
 <b style="font-size:17px">App Rating ⭐</b>
-<p style="font-size:13px;color:var(--ink-soft);margin:4px 0 8px">App kaisa laga? 1 minute me rating do — aapki raay seedha hum tak pahunchegi, aapka number kahin share nahi hoga 🔒</p>
-<button class="btn green" style="font-size:16px" onclick="openRatingForm()">⭐ Rating Do</button>
+<p style="font-size:13px;color:var(--ink-soft);margin:4px 0 8px">App kaisa laga? 10 second me rating do — app chhode bina 🔒</p>
+<div id="stars" style="font-size:38px;letter-spacing:4px;margin:4px 0"></div>
+<label>Comment (optional)</label>
+<input type="text" id="rateComment" maxlength="120" placeholder="Kya achha laga, kya sudharein?">
+<button class="btn green" style="font-size:16px" id="rateBtn" onclick="submitRating()">📩 Rating Bhejo</button>
+<div id="rateThanks" style="display:none;margin-top:10px;background:var(--income-tint);border-radius:12px;padding:12px;text-align:center;font-weight:800;color:var(--income)">✅ Dhanyavaad! Aapki rating mil gayi 🙏</div>
+<p style="font-size:13px;color:var(--ink-soft);margin-top:8px" id="rateStatus"></p>
+<p style="font-size:13px;color:var(--ink-soft);margin-top:8px" id="myRatingInfo"></p>
 </div>
 <div class="card">
 <b style="font-size:17px">App Info ℹ️</b>
@@ -281,7 +287,7 @@ function showMsg(id,txt){var e=document.getElementById(id);e.textContent=txt;e.c
 function showTab(t){["kharcha","hisab","history","settings"].forEach(function(x){document.getElementById("t-"+x).classList.toggle("hidden",x!==t);document.getElementById("n-"+x).classList.toggle("sel",x===t);});
  var subs={kharcha:"Aaj ka kharcha likho ✍️",hisab:"Hisab · "+monthLbl(curMonth),history:"Purane kharche dekho 📒",settings:"App Interface · सेटिंग ⚙️"};
  document.getElementById("tabSub").textContent=subs[t];
- if(t==="settings"){renderSetCats();renderGLogin();renderBackupInfo();}
+ if(t==="settings"){renderSetCats();renderGLogin();renderBackupInfo();renderStars();}
  else if(t!=="kharcha")renderAll();window.scrollTo(0,0);}
 function moveMonth(d){var p=curMonth.split("-");var dt=new Date(+p[0],+p[1]-1+d,1);curMonth=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");renderAll();}
 /* calendar popup */
@@ -531,9 +537,36 @@ function installApp(){
  if(st)st.style.display=st.style.display==="none"?"block":"none";}
 if("serviceWorker" in navigator && /^https?:/.test(location.protocol)){
  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
-/* ===== Rating (Google Form) ===== */
-var DEFAULT_RATING_FORM="https://docs.google.com/forms/d/e/1FAIpQLSeWbkkVNFj5onxryIXbkHU_ietIumVHmR6nM1gr25S7y4oCJg/viewform?usp=publish-editor";
-function openRatingForm(){window.open(DEFAULT_RATING_FORM,"_blank");}
+/* ===== Rating (Apps Script relay, real confirmation) ===== */
+var RATING_URL="https://script.google.com/macros/s/AKfycbx6RsDxbzw9wdF0mhsEwZYy7uAz35c4aVp5Hpp0HHidtYsRFo6FIQYH7hU34MfLX46m/exec";
+var myStars=0, ratingTimer=null;
+function renderStars(){var el=document.getElementById("stars");if(!el)return;var h="";
+ for(var i=1;i<=5;i++)h+='<span onclick="setRating('+i+')" style="cursor:pointer;'+(i<=myStars?"":"filter:grayscale(1);opacity:.4")+'">⭐</span>';
+ el.innerHTML=h;
+ var saved=load("rojmel_myrating",0),info=document.getElementById("myRatingInfo");
+ if(info)info.textContent=saved?("Aapki rating: "+"⭐".repeat(saved)+" ("+saved+"/5)"+(load("rojmel_ratingsent",0)?" · Bhej di gayi ✅":"")):"";}
+function setRating(n){myStars=n;var th=document.getElementById("rateThanks");if(th)th.style.display="none";var st=document.getElementById("rateStatus");if(st)st.textContent="";renderStars();}
+function ratingDone(res){if(ratingTimer){clearTimeout(ratingTimer);ratingTimer=null;}
+ var btn=document.getElementById("rateBtn"),st=document.getElementById("rateStatus");
+ if(btn){btn.disabled=false;btn.style.opacity="1";}
+ if(res&&res.ok){save("rojmel_myrating",myStars);save("rojmel_ratingsent",1);renderStars();
+  var th=document.getElementById("rateThanks");if(th)th.style.display="block";if(st)st.textContent="";
+  var c=document.getElementById("rateComment");if(c)c.value="";}
+ else if(st)st.textContent="⚠️ Rating nahi pahunchi. Dobara try karo.";}
+function submitRating(){if(!myStars){alert("Pehle stars pe tap karke rating do");return;}
+ var cmt=(document.getElementById("rateComment").value||"").trim();
+ var st=document.getElementById("rateStatus"),btn=document.getElementById("rateBtn");
+ if(st)st.textContent="⏳ Rating bheji ja rahi hai...";
+ if(btn){btn.disabled=true;btn.style.opacity=".55";}
+ var old=document.getElementById("ratingJsonp");if(old)old.remove();
+ var sc=document.createElement("script");sc.id="ratingJsonp";
+ sc.onerror=function(){if(ratingTimer){clearTimeout(ratingTimer);ratingTimer=null;}
+  if(btn){btn.disabled=false;btn.style.opacity="1";}
+  if(st)st.textContent="⚠️ Internet me dikkat hai. Dobara try karo.";};
+ sc.src=RATING_URL+"?rating="+myStars+"&comment="+encodeURIComponent(cmt)+"&callback=ratingDone";
+ document.body.appendChild(sc);
+ ratingTimer=setTimeout(function(){if(btn){btn.disabled=false;btn.style.opacity="1";}
+  if(st)st.textContent="⚠️ Jawab nahi aaya. Internet check karke dobara try karo.";},20000);}
 /* init */
 renderCats();refreshDateLbls();renderToday();renderAll();renderBackupInfo();
 </script>
