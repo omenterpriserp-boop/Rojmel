@@ -449,7 +449,8 @@ function saveEdit(){var amt=parseFloat(document.getElementById("editAmt").value)
  closeEdit();curMonth=editDate.slice(0,7);renderToday();renderAll();}
 /* ===== Google Drive Backup ===== */
 var gToken=null, gEmail="", gisClient=null;
-function getClientId(){return (load("rojmel_gclient","")||"").trim();}
+var DEFAULT_CLIENT_ID="98803064374-gu5quc0itd6jelt0nab90t88ojroikq6.apps.googleusercontent.com";
+function getClientId(){return (load("rojmel_gclient","")||DEFAULT_CLIENT_ID||"").trim();}
 function saveClientId(){var v=document.getElementById("gClientId").value.trim();
  if(!v){alert("Pehle Client ID paste karo");return;}
  save("rojmel_gclient",v);gisClient=null;renderGLogin();alert("✅ Client ID save ho gaya. Ab Google se login karo.");}
