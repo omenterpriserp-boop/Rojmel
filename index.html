@@ -568,6 +568,7 @@ function submitRating(){if(!myStars){alert("Pehle stars pe tap karke rating do")
  ratingTimer=setTimeout(function(){if(btn){btn.disabled=false;btn.style.opacity="1";}
   if(st)st.textContent="⚠️ Jawab nahi aaya. Internet check karke dobara try karo.";},20000);}
 /* init */
+try{if(!load("rojmel_v10_mig",0)){localStorage.removeItem("rojmel_myrating");localStorage.removeItem("rojmel_ratingsent");save("rojmel_v10_mig",1);}}catch(e){}
 renderCats();refreshDateLbls();renderToday();renderAll();renderBackupInfo();
 </script>
 </body>
