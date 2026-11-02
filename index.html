@@ -183,6 +183,7 @@ Uske baad Rojmel ka icon home screen pe aa jayega 📱
 <div class="card">
 <b style="font-size:17px">Google Drive Backup ☁️</b>
 <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 8px">Mail ID se login karo, data aapki Drive me safe rahega</p>
+<div id="cidBlock" style="display:none">
 <label>Google Client ID</label>
 <input type="text" id="gClientId" placeholder="Paste your Google OAuth Client ID">
 <button class="fchip" style="margin-top:8px" onclick="saveClientId()">💾 Client ID Save Karo</button>
@@ -198,6 +199,7 @@ Uske baad Rojmel ka icon home screen pe aa jayega 📱
 </ol>
 <p style="margin-top:6px"><b>Note:</b> Google login ke liye is file ko internet pe host karna padega (jaise GitHub Pages, bilkul free). Bina hosting ke login kaam nahi karega.</p>
 </details>
+</div>
 <div id="gLoginArea" style="margin-top:12px"></div>
 <div class="row2" style="margin-top:10px">
 <button class="fchip" onclick="manualBackup()">⬆️ Abhi Backup Karo</button>
@@ -215,8 +217,10 @@ Uske baad Rojmel ka icon home screen pe aa jayega 📱
 <div id="stars" style="font-size:38px;letter-spacing:4px;margin:4px 0"></div>
 <label>Comment (optional)</label>
 <input type="text" id="rateComment" maxlength="120" placeholder="Kya achha laga, kya sudharein?">
+<div style="display:none">
 <label>App owner ka WhatsApp number (rating yahin jayegi)</label>
 <input type="text" id="ownerWa" inputmode="numeric" placeholder="e.g. 919876543210">
+</div>
 <button class="btn green" style="font-size:16px" onclick="sendRating()">📩 Rating Bhejo</button>
 <div id="rateResult" style="display:none;margin-top:10px;background:var(--surface-deep);border-radius:12px;padding:10px 12px">
 <b style="font-size:14px">Aapki rating taiyaar hai ✅</b>
@@ -450,6 +454,7 @@ function saveEdit(){var amt=parseFloat(document.getElementById("editAmt").value)
 /* ===== Google Drive Backup ===== */
 var gToken=null, gEmail="", gisClient=null;
 var DEFAULT_CLIENT_ID="98803064374-gu5quc0itd6jelt0nab90t88ojroikq6.apps.googleusercontent.com";
+var DEFAULT_OWNER_WA="917878874847";
 function getClientId(){return (load("rojmel_gclient","")||DEFAULT_CLIENT_ID||"").trim();}
 function saveClientId(){var v=document.getElementById("gClientId").value.trim();
  if(!v){alert("Pehle Client ID paste karo");return;}
@@ -476,14 +481,15 @@ function driveFetch(url,opt){opt=opt||{};opt.headers=opt.headers||{};
  opt.headers["Authorization"]="Bearer "+gToken;
  return fetch(url,opt).then(function(r){if(r.status===401){gToken=null;renderGLogin();throw new Error("Login expire ho gaya, dobara login karo");}return r;});}
 function driveFolderId(){return load("rojmel_gfolder","");}
+function gErr(r){return r.json().then(function(j){var m=(j&&j.error&&j.error.message)||("HTTP "+r.status);throw new Error(m);},function(){throw new Error("HTTP "+r.status);});}
 function findOrCreateFolder(){
  var fid=driveFolderId();
  var check=fid?driveFetch("https://www.googleapis.com/drive/v3/files/"+fid+"?fields=id,trashed").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}):Promise.resolve(null);
  return check.then(function(f){
   if(f&&!f.trashed)return fid;
-  return driveFetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent("mimeType='application/vnd.google-apps.folder' and name='RojmelBackup' and trashed=false")+"&fields=files(id)").then(function(r){return r.json();}).then(function(j){
+  return driveFetch("https://www.googleapis.com/drive/v3/files?q="+encodeURIComponent("mimeType='application/vnd.google-apps.folder' and name='RojmelBackup' and trashed=false")+"&fields=files(id)").then(function(r){return r.ok?r.json():gErr(r);}).then(function(j){
    if(j.files&&j.files.length){save("rojmel_gfolder",j.files[0].id);return j.files[0].id;}
-   return driveFetch("https://www.googleapis.com/drive/v3/files",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:"RojmelBackup",mimeType:"application/vnd.google-apps.folder"})}).then(function(r){return r.json();}).then(function(nf){save("rojmel_gfolder",nf.id);return nf.id;});
+   return driveFetch("https://www.googleapis.com/drive/v3/files",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:"RojmelBackup",mimeType:"application/vnd.google-apps.folder"})}).then(function(r){return r.ok?r.json():gErr(r);}).then(function(nf){if(!nf.id)throw new Error("Folder nahi bana");save("rojmel_gfolder",nf.id);return nf.id;});
   });});}
 function backupData(){return {app:"rojmel",savedAt:new Date().toISOString(),
  expenses:getExp(),income_by_month:getInc(),cats:getCustom()};}
@@ -492,17 +498,18 @@ function doBackup(silent){
  var payload=JSON.stringify(backupData());
  return findOrCreateFolder().then(function(fid){
   var q=encodeURIComponent("name='rojmel-backup.json' and '"+fid+"' in parents and trashed=false");
-  return driveFetch("https://www.googleapis.com/drive/v3/files?q="+q+"&fields=files(id)").then(function(r){return r.json();}).then(function(j){
+  return driveFetch("https://www.googleapis.com/drive/v3/files?q="+q+"&fields=files(id)").then(function(r){return r.ok?r.json():gErr(r);}).then(function(j){
    var meta={name:"rojmel-backup.json",mimeType:"application/json"};
-   var body=new FormData();body.append("metadata",new Blob([JSON.stringify(meta)],{type:"application/json"}));
-   body.append("file",new Blob([payload],{type:"application/json"}));
    var url="https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
    var method="POST";
    if(j.files&&j.files.length){url="https://www.googleapis.com/upload/drive/v3/files/"+j.files[0].id+"?uploadType=multipart";method="PATCH";}
-   else{meta.parents=[fid];body=new FormData();body.append("metadata",new Blob([JSON.stringify(meta)],{type:"application/json"}));body.append("file",new Blob([payload],{type:"application/json"}));}
-   return driveFetch(url,{method:method,body:body});
-  });}).then(function(r){if(!r.ok)throw new Error("upload fail");return r.json();})
- .then(function(){var now=Date.now();save("rojmel_lastbackup",now);renderBackupInfo();
+   else{meta.parents=[fid];}
+   var bnd="----rojmel"+Date.now();
+   var CRLF="\r\n";
+   var body="--"+bnd+CRLF+"Content-Type: application/json; charset=UTF-8"+CRLF+CRLF+JSON.stringify(meta)+CRLF+"--"+bnd+CRLF+"Content-Type: application/json"+CRLF+CRLF+payload+CRLF+"--"+bnd+"--";
+   return driveFetch(url,{method:method,headers:{"Content-Type":"multipart/related; boundary="+bnd},body:body})
+    .then(function(r){return r.ok?r.json():gErr(r);});
+  });}).then(function(){var now=Date.now();save("rojmel_lastbackup",now);renderBackupInfo();
   if(!silent)alert("✅ Backup ho gaya! Aapki Google Drive me save hai.");return true;})
  .catch(function(e){if(!silent)alert("❌ Backup fail: "+e.message);return false;});}
 function manualBackup(){doBackup(false);}
@@ -548,11 +555,11 @@ function renderStars(){var el=document.getElementById("stars");if(!el)return;var
  el.innerHTML=h;
  var saved=load("rojmel_myrating",0), info=document.getElementById("myRatingInfo");
  if(info)info.textContent=saved?("Aapki rating: "+"⭐".repeat(saved)+" ("+saved+"/5)"+(load("rojmel_ratingsent",0)?" · Bhej di gayi ✅":"")):"";
- var ow=document.getElementById("ownerWa");if(ow&&!ow.value)ow.value=load("rojmel_ownerwa","");}
+ var ow=document.getElementById("ownerWa");if(ow&&!ow.value)ow.value=load("rojmel_ownerwa","")||DEFAULT_OWNER_WA;}
 function setRating(n){myStars=n;renderStars();}
 var lastWaLink="";
 function sendRating(){if(!myStars){alert("Pehle stars pe tap karke rating do");return;}
- var wa=(document.getElementById("ownerWa").value||"").replace(/\D/g,"");
+ var wa=((document.getElementById("ownerWa").value||"").replace(/\D/g,"")||DEFAULT_OWNER_WA);
  if(!wa){alert("App owner ka WhatsApp number dalo");return;}
  save("rojmel_ownerwa",wa);
  var cmt=document.getElementById("rateComment").value.trim();
