@@ -213,25 +213,8 @@ Uske baad Rojmel ka icon home screen pe aa jayega 📱
 </div>
 <div class="card">
 <b style="font-size:17px">App Rating ⭐</b>
-<p style="font-size:13px;color:var(--ink-soft);margin:4px 0 8px">App kaisa laga? Rating do, aapki raay WhatsApp pe jayegi</p>
-<div id="stars" style="font-size:38px;letter-spacing:4px;margin:4px 0"></div>
-<label>Comment (optional)</label>
-<input type="text" id="rateComment" maxlength="120" placeholder="Kya achha laga, kya sudharein?">
-<div style="display:none">
-<label>App owner ka WhatsApp number (rating yahin jayegi)</label>
-<input type="text" id="ownerWa" inputmode="numeric" placeholder="e.g. 919876543210">
-</div>
-<button class="btn green" style="font-size:16px" onclick="sendRating()">📩 Rating Bhejo</button>
-<div id="rateResult" style="display:none;margin-top:10px;background:var(--surface-deep);border-radius:12px;padding:10px 12px">
-<b style="font-size:14px">Aapki rating taiyaar hai ✅</b>
-<textarea id="rateText" readonly rows="4" style="width:100%;margin-top:8px;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff"></textarea>
-<div class="row2" style="margin-top:8px">
-<button class="fchip" onclick="copyRating()">📋 Copy Karo</button>
-<button class="fchip" onclick="openWaRating()">📲 WhatsApp Kholo</button>
-</div>
-<p style="font-size:12px;color:var(--ink-soft);margin-top:8px">WhatsApp kholo → owner ke chat me paste karke bhej do. (Agar app ke andar khola hai to Chrome me kholo, wahan direct khulega.)</p>
-</div>
-<p style="font-size:13px;color:var(--ink-soft);margin-top:8px" id="myRatingInfo"></p>
+<p style="font-size:13px;color:var(--ink-soft);margin:4px 0 8px">App kaisa laga? 1 minute me rating do — aapki raay seedha hum tak pahunchegi, aapka number kahin share nahi hoga 🔒</p>
+<button class="btn green" style="font-size:16px" onclick="openRatingForm()">⭐ Rating Do</button>
 </div>
 <div class="card">
 <b style="font-size:17px">App Info ℹ️</b>
@@ -298,7 +281,7 @@ function showMsg(id,txt){var e=document.getElementById(id);e.textContent=txt;e.c
 function showTab(t){["kharcha","hisab","history","settings"].forEach(function(x){document.getElementById("t-"+x).classList.toggle("hidden",x!==t);document.getElementById("n-"+x).classList.toggle("sel",x===t);});
  var subs={kharcha:"Aaj ka kharcha likho ✍️",hisab:"Hisab · "+monthLbl(curMonth),history:"Purane kharche dekho 📒",settings:"App Interface · सेटिंग ⚙️"};
  document.getElementById("tabSub").textContent=subs[t];
- if(t==="settings"){renderSetCats();renderGLogin();renderBackupInfo();renderStars();}
+ if(t==="settings"){renderSetCats();renderGLogin();renderBackupInfo();}
  else if(t!=="kharcha")renderAll();window.scrollTo(0,0);}
 function moveMonth(d){var p=curMonth.split("-");var dt=new Date(+p[0],+p[1]-1+d,1);curMonth=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");renderAll();}
 /* calendar popup */
@@ -548,33 +531,9 @@ function installApp(){
  if(st)st.style.display=st.style.display==="none"?"block":"none";}
 if("serviceWorker" in navigator && /^https?:/.test(location.protocol)){
  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
-/* ===== Rating ===== */
-var myStars=0;
-function renderStars(){var el=document.getElementById("stars");if(!el)return;var h="";
- for(var i=1;i<=5;i++)h+='<span onclick="setRating('+i+')" style="cursor:pointer;'+(i<=myStars?"":"filter:grayscale(1);opacity:.4")+'">⭐</span>';
- el.innerHTML=h;
- var saved=load("rojmel_myrating",0), info=document.getElementById("myRatingInfo");
- if(info)info.textContent=saved?("Aapki rating: "+"⭐".repeat(saved)+" ("+saved+"/5)"+(load("rojmel_ratingsent",0)?" · Bhej di gayi ✅":"")):"";
- var ow=document.getElementById("ownerWa");if(ow&&!ow.value)ow.value=load("rojmel_ownerwa","")||DEFAULT_OWNER_WA;}
-function setRating(n){myStars=n;renderStars();}
-var lastWaLink="";
-function sendRating(){if(!myStars){alert("Pehle stars pe tap karke rating do");return;}
- var wa=((document.getElementById("ownerWa").value||"").replace(/\D/g,"")||DEFAULT_OWNER_WA);
- if(!wa){alert("App owner ka WhatsApp number dalo");return;}
- save("rojmel_ownerwa",wa);
- var cmt=document.getElementById("rateComment").value.trim();
- var txt="*Rojmel App Rating*\nRating: "+myStars+"/5 "+("⭐".repeat(myStars))+(cmt?"\nComment: "+cmt:"")+"\nDate: "+new Date().toLocaleDateString("hi-IN");
- save("rojmel_myrating",myStars);save("rojmel_ratingsent",1);renderStars();
- lastWaLink="https://wa.me/"+wa+"?text="+encodeURIComponent(txt);
- document.getElementById("rateText").value=txt;
- document.getElementById("rateResult").style.display="block";
- openWaRating();}
-function openWaRating(){if(!lastWaLink){alert("Pehle 'Rating Bhejo' dabao");return;}
- try{location.href=lastWaLink;}catch(e){alert("WhatsApp nahi khul paya. Upar wala text copy karke WhatsApp me bhej do.");}}
-function copyRating(){var t=document.getElementById("rateText");t.select();
- function done(){showMsg("myRatingInfo","✅ Copy ho gaya! WhatsApp me paste karke bhej do");}
- if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done).catch(function(){document.execCommand("copy");done();});}
- else{document.execCommand("copy");done();}}
+/* ===== Rating (Google Form) ===== */
+var DEFAULT_RATING_FORM="https://docs.google.com/forms/d/e/1FAIpQLSeWbkkVNFj5onxryIXbkHU_ietIumVHmR6nM1gr25S7y4oCJg/viewform?usp=publish-editor";
+function openRatingForm(){window.open(DEFAULT_RATING_FORM,"_blank");}
 /* init */
 renderCats();refreshDateLbls();renderToday();renderAll();renderBackupInfo();
 </script>
