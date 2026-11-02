@@ -96,6 +96,23 @@ nav button.sel{color:var(--primary-deep);background:var(--primary-tint)}
 </style>
 </head>
 <body>
+<div id="startLogin" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(60,40,20,.55)">
+<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,380px);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+<div style="font-size:52px">👛</div>
+<div style="font-size:22px;font-weight:800;margin:6px 0 2px">रोज़मेल <small style="font-size:13px;color:var(--ink-soft)">· Daily Kharcha</small></div>
+<p style="font-size:14px;color:var(--ink-soft);margin:8px 0 4px">Aapka kharcha <b>Google Drive pe safe</b> rahe, isliye login karo.<br>Roz ka auto-backup chalu ho jayega ☁️</p>
+<p id="startLoginMail" style="font-size:12px;color:var(--ink-soft);margin:6px 0 0"></p>
+<button class="btn green" style="font-size:16px;margin-top:12px" onclick="googleLogin()">🔐 Google se Login Karo</button>
+<div><button onclick="hideStartupLogin()" style="background:none;border:none;color:var(--ink-soft);font-size:14px;margin-top:12px;cursor:pointer;text-decoration:underline">Bina login ke aage badho →</button></div>
+</div>
+</div>
+<div id="iconPickOv" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(60,40,20,.55)">
+<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,400px);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+<b id="iconPickTitle" style="font-size:17px">Icon chuno 🎨</b>
+<div id="iconPickGrid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:12px 0;max-height:46vh;overflow:auto"></div>
+<button class="fchip" onclick="closeIconPick()">Band karo</button>
+</div>
+</div>
 <div class="wrap">
 <header>
 <div class="hrow"><div class="logo">👛</div>
@@ -165,7 +182,8 @@ nav button.sel{color:var(--primary-deep);background:var(--primary-tint)}
 <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 8px">Nayi category yahan se jodo ya hatao</p>
 <div class="chips" id="setCatList" style="flex-wrap:wrap;overflow:visible"></div>
 <div style="display:flex;gap:8px;margin-top:10px">
-<input type="text" id="newCat" placeholder="Nayi category… e.g. Bijli" style="flex:1">
+<input type="text" id="newCat" placeholder="Nayi category… e.g. Sabji" style="flex:1">
+<button class="fchip" id="newCatIconBtn" onclick="openIconPick(null)" title="Icon chuno 🎨" style="font-size:20px">⚪</button>
 <button class="fchip" onclick="addCat()">+ Jodo</button></div>
 <div class="msg" id="setCatMsg"></div>
 </div>
@@ -224,7 +242,7 @@ Uske baad Rojmel ka icon home screen pe aa jayega 📱
 </div>
 <div class="card">
 <b style="font-size:17px">App Info ℹ️</b>
-<p style="font-size:13px;color:var(--ink-soft);margin-top:6px;line-height:1.7">रोज़मेल v2 · Saara data aapke phone me save hota hai.<br>Google Drive backup se data kabhi nahi khoyega.</p>
+<p style="font-size:13px;color:var(--ink-soft);margin-top:6px;line-height:1.7">रोज़मेल v3 · Saara data aapke phone me save hota hai.<br>Google Drive backup se data kabhi nahi khoyega.</p>
 </div>
 </div>
 </main>
@@ -274,6 +292,11 @@ function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
 function getExp(){return load("rojmel_expenses",[]);}
 function getInc(){return load("rojmel_income_by_month",{});}
 function getCustom(){return load("rojmel_cats",[]);}
+function getIcons(){return load("rojmel_cat_icons",{});}
+function catIcon(c){var ic=getIcons();return EMO[c]||ic[c]||"⚪";}
+function getHidden(){return load("rojmel_hidden_cats",[]);}
+function visCats(){var h=getHidden();return allCats().filter(function(c){return h.indexOf(c)<0;});}
+function toggleHide(c){var h=getHidden();var i=h.indexOf(c);if(i>=0)h.splice(i,1);else h.push(c);save("rojmel_hidden_cats",h);renderCats();renderSetCats();}
 function fmt(n){return "₹"+Math.round(n).toLocaleString("en-IN");}
 function dstr(ds){var t=todayStr();if(ds===t)return "आज (Aaj)";
  var y=new Date();y.setDate(y.getDate()-1);
@@ -325,24 +348,51 @@ function drawCalMonth(){
 function pickMonth(m){curMonth=m;closeCal();renderAll();}
 /* kharcha */
 function renderCats(){var g=document.getElementById("catGrid");g.innerHTML="";
- allCats().forEach(function(c){var b=document.createElement("button");b.className="cat"+(c===selCat?" sel":"");
- b.innerHTML='<span class="e">'+(EMO[c]||"⚪")+'</span>'+c+'<span class="h">'+(HIN[c]||"")+'</span>';
+ visCats().forEach(function(c){var b=document.createElement("button");b.className="cat"+(c===selCat?" sel":"");
+ b.innerHTML='<span class="e">'+catIcon(c)+'</span>'+c+'<span class="h">'+(HIN[c]||"")+'</span>';
  b.onclick=function(){selCat=c;renderCats();};g.appendChild(b);});}
-function addCat(){var v=document.getElementById("newCat").value.trim();if(!v)return;
+function addCat(){var v=document.getElementById("newCat").value.trim();if(!v){alert("Pehle category ka naam likho");return;}
  var all=allCats();var dup=all.some(function(x){return x.toLowerCase()===v.toLowerCase();});
  if(dup){showMsg("setCatMsg","⚠️ Ye category pehle se hai");return;}
- var c=getCustom();c.push(v);save("rojmel_cats",c);selCat=v;document.getElementById("newCat").value="";
+ var c=getCustom();c.push(v);save("rojmel_cats",c);
+ var ic=getIcons();ic[v]=newCatIcon||"⚪";save("rojmel_cat_icons",ic);
+ selCat=v;document.getElementById("newCat").value="";newCatIcon="⚪";
+ var ib=document.getElementById("newCatIconBtn");if(ib)ib.textContent="⚪";
  renderCats();renderSetCats();showMsg("setCatMsg",'✅ "'+v+'" category jud gayi');}
 function renderSetCats(){var el=document.getElementById("setCatList");if(!el)return;el.innerHTML="";
- var custom=getCustom();
- allCats().forEach(function(c){var b=document.createElement("span");b.className="fchip";b.style.display="inline-flex";b.style.alignItems="center";b.style.gap="6px";
-  b.textContent=(EMO[c]||"⚪")+" "+c+(HIN[c]?" · "+HIN[c]:"");
-  if(custom.indexOf(c)>=0){var x=document.createElement("button");x.textContent=" ✕";x.style.cssText="background:none;border:none;color:var(--spend);font-weight:800;font-size:14px";
+ var custom=getCustom(),hidden=getHidden();
+ allCats().forEach(function(c){var isH=hidden.indexOf(c)>=0;
+  var b=document.createElement("span");b.className="fchip";b.style.display="inline-flex";b.style.alignItems="center";b.style.gap="6px";
+  if(isH)b.style.opacity=".45";
+  var t=document.createElement("span");t.textContent=catIcon(c)+" "+c+(HIN[c]?" · "+HIN[c]:"");b.appendChild(t);
+  if(custom.indexOf(c)>=0){
+   var pc=document.createElement("button");pc.textContent="🎨";pc.title="Icon badlo";pc.style.cssText="background:none;border:none;font-size:14px;cursor:pointer";
+   pc.onclick=function(){openIconPick(c);};b.appendChild(pc);
+   var x=document.createElement("button");x.textContent="✕";x.title="Hatao";x.style.cssText="background:none;border:none;color:var(--spend);font-weight:800;font-size:14px;cursor:pointer";
    x.onclick=function(){delCat(c);};b.appendChild(x);}
+  else{var hb=document.createElement("button");hb.textContent=isH?"👁️":"🚫";hb.title=isH?"Wapas dikhao":"Chhupao";
+   hb.style.cssText="background:none;border:none;font-size:14px;cursor:pointer";
+   hb.onclick=function(){toggleHide(c);};b.appendChild(hb);}
   el.appendChild(b);});}
 function delCat(c){if(selCat===c)selCat="Khana";
  save("rojmel_cats",getCustom().filter(function(x){return x!==c;}));
+ var ic=getIcons();if(ic[c]){delete ic[c];save("rojmel_cat_icons",ic);}
  renderCats();renderSetCats();showMsg("setCatMsg",'🗑 "'+c+'" hata di gayi');}
+var ICONS=["🥬","🍅","🥕","🧅","🥔","🌽","🍎","🍌","🥭","🍇","🥛","🍞","🥚","🧀","🍗","🐟","🍤","🧄","🌶️","🍯","💅","💄","💇‍♀️","🧴","🧼","🪞","👗","👠","👜","👕","👖","👟","🧢","👶","🍼","🎒","📚","✏️","💊","🩺","🏥","📱","💡","🔌","🧹","🧺","🚌","🚂","✈️","🚕","🛵","🎁","🎉","💰","🐷","🏦","🙏","🐄","🐶","⚪"];
+var newCatIcon="⚪", iconPickFor=null;
+function openIconPick(cat){iconPickFor=cat||null;
+ var t=document.getElementById("iconPickTitle");
+ if(t)t.textContent=cat?('"'+cat+'" ka icon chuno 🎨'):"Nayi category ka icon chuno 🎨";
+ var g=document.getElementById("iconPickGrid");if(!g)return;g.innerHTML="";
+ var cur=cat?(getIcons()[cat]||"⚪"):newCatIcon;
+ ICONS.forEach(function(e){var b=document.createElement("button");b.textContent=e;
+  b.style.cssText="font-size:26px;background:"+(e===cur?"var(--income-tint)":"none")+";border:"+(e===cur?"2px solid var(--income)":"2px solid transparent")+";border-radius:10px;padding:6px;cursor:pointer";
+  b.onclick=function(){pickIcon(e);};g.appendChild(b);});
+ document.getElementById("iconPickOv").style.display="block";}
+function pickIcon(e){if(iconPickFor){var ic=getIcons();ic[iconPickFor]=e;save("rojmel_cat_icons",ic);renderCats();renderSetCats();showMsg("setCatMsg",'✅ "'+iconPickFor+'" ka icon badal gaya '+e);}
+ else{newCatIcon=e;var ib=document.getElementById("newCatIconBtn");if(ib)ib.textContent=e;}
+ closeIconPick();}
+function closeIconPick(){var m=document.getElementById("iconPickOv");if(m)m.style.display="none";}
 function saveExpense(){var amt=parseFloat(document.getElementById("expAmt").value);
  if(!amt||amt<=0){showMsg("expMsg","⚠️ Pehle sahi amount likho");return;}
  var note=document.getElementById("expNote").value.trim();
@@ -398,7 +448,7 @@ function renderAll(){
  arr=Object.keys(m).map(function(k){return [k,m[k]];}).sort(function(a,b){return b[1]-a[1];});
  var mxc=arr.length?arr[0][1]:1, cb=document.getElementById("catBars");
  cb.innerHTML=arr.length?arr.map(function(p){var col=COL[p[0]]||"#a16207";
-  return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700"><span>'+(EMO[p[0]]||"")+" "+p[0]+(HIN[p[0]]?" · "+HIN[p[0]]:"")+'</span><span>'+fmt(p[1])+'</span></div><div class="bar"><div style="width:'+(p[1]/mxc*100)+'%;background:'+col+'"></div></div></div>';}).join("")
+  return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700"><span>'+catIcon(p[0])+" "+p[0]+(HIN[p[0]]?" · "+HIN[p[0]]:"")+'</span><span>'+fmt(p[1])+'</span></div><div class="bar"><div style="width:'+(p[1]/mxc*100)+'%;background:'+col+'"></div></div></div>';}).join("")
   :'<p style="color:var(--ink-soft);font-size:14px">Is mahine koi kharcha nahi.</p>';
  renderHist(ex);
 }
@@ -418,7 +468,7 @@ function renderHist(ex){
   var tot=by[d].reduce(function(s,e){return s+e.amount;},0);
   return '<div class="card"><div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:4px"><span>'+dstr(d)+' · '+d+'</span><span style="color:var(--spend)">'+fmt(tot)+'</span></div>'
   +by[d].map(function(e){var col=COL[e.category]||"#a16207";
-   return '<div class="item"><div class="ic" style="background:'+col+'22"><span>'+(EMO[e.category]||"⚪")+'</span></div>'
+   return '<div class="item"><div class="ic" style="background:'+col+'22"><span>'+catIcon(e.category)+'</span></div>'
    +'<div style="flex:1;min-width:0"><b>'+e.category+(HIN[e.category]?" · "+HIN[e.category]:"")+'</b>'+(e.note?'<br><small style="color:var(--ink-soft)">'+e.note+'</small>':"")
    +'</div><b>'+fmt(e.amount)+'</b><button class="edt" onclick="openEdit(\''+e.id+'\')">✏️</button><button class="del" onclick="delExp(\''+e.id+'\')">🗑</button></div>';}).join("")+'</div>';
  }).join(""):'<div class="card"><p style="color:var(--ink-soft)">Is mahine kuch nahi mila 📭</p></div>';
@@ -431,7 +481,7 @@ function openEdit(id){var e=getExp().filter(function(x){return x.id===id;})[0];i
  document.getElementById("editAmt").value=e.amount;
  document.getElementById("editNote").value=e.note||"";
  var ec=document.getElementById("editCats");ec.innerHTML="";
- allCats().forEach(function(c){var b=document.createElement("button");b.className="fchip"+(c===editCat?" sel":"");
+ visCats().forEach(function(c){var b=document.createElement("button");b.className="fchip"+(c===editCat?" sel":"");
   b.textContent=c;b.onclick=function(){editCat=c;var bs=ec.querySelectorAll(".fchip");for(var i=0;i<bs.length;i++)bs[i].classList.remove("sel");b.classList.add("sel");};ec.appendChild(b);});
  document.getElementById("editOv").classList.add("show");}
 function closeEdit(){document.getElementById("editOv").classList.remove("show");}
@@ -440,6 +490,13 @@ function saveEdit(){var amt=parseFloat(document.getElementById("editAmt").value)
  var note=document.getElementById("editNote").value.trim();
  save("rojmel_expenses",getExp().map(function(e){return e.id===editId?{id:e.id,date:editDate,category:editCat,amount:Math.round(amt*100)/100,note:note}:e;}));
  closeEdit();curMonth=editDate.slice(0,7);renderToday();renderAll();}
+/* ===== Startup login ===== */
+function showStartupLogin(){if(load("rojmel_ever_logged",0)||load("rojmel_gmail",""))return;
+var m=document.getElementById("startLogin");if(!m)return;
+ var sm=load("rojmel_gmail",""),el=document.getElementById("startLoginMail");
+ if(el)el.textContent=sm?("Pichhli baar: "+sm):"";
+ m.style.display="block";}
+function hideStartupLogin(){var m=document.getElementById("startLogin");if(m)m.style.display="none";}
 /* ===== Google Drive Backup ===== */
 var gToken=null, gEmail="", gisClient=null;
 var DEFAULT_CLIENT_ID="98803064374-gu5quc0itd6jelt0nab90t88ojroikq6.apps.googleusercontent.com";
@@ -461,10 +518,10 @@ function googleLogin(){var cid=getClientId();if(!cid){alert("Pehle Client ID sav
   scope:"https://www.googleapis.com/auth/drive.file email",
   callback:function(r){if(r&&r.access_token){gToken=r.access_token;fetchGmail();}else{alert("Login fail ho gaya, dobara try karo");}}});
   gisClient.requestAccessToken();}catch(e){alert("Login error: "+e.message);}}
-function googleLogout(){gToken=null;gEmail="";renderGLogin();renderBackupInfo();}
+function googleLogout(){gToken=null;gEmail="";try{localStorage.removeItem("rojmel_ever_logged");}catch(e){}renderGLogin();renderBackupInfo();}
 function fetchGmail(){fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+gToken}})
  .then(function(r){if(!r.ok)throw new Error("auth");return r.json();})
- .then(function(j){gEmail=j.email||"";save("rojmel_gmail",gEmail);renderGLogin();maybeAutoBackup(true);})
+ .then(function(j){gEmail=j.email||"";save("rojmel_gmail",gEmail);save("rojmel_ever_logged",1);renderGLogin();hideStartupLogin();maybeAutoBackup(true);})
  .catch(function(){gToken=null;renderGLogin();alert("Login expire ho gaya, dobara login karo");});}
 function driveFetch(url,opt){opt=opt||{};opt.headers=opt.headers||{};
  opt.headers["Authorization"]="Bearer "+gToken;
@@ -537,39 +594,38 @@ function installApp(){
  if(st)st.style.display=st.style.display==="none"?"block":"none";}
 if("serviceWorker" in navigator && /^https?:/.test(location.protocol)){
  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
-/* ===== Rating (Apps Script relay, real confirmation) ===== */
+/* ===== Rating (Apps Script via fetch - same transport as Drive backup) ===== */
 var RATING_URL="https://script.google.com/macros/s/AKfycbx6RsDxbzw9wdF0mhsEwZYy7uAz35c4aVp5Hpp0HHidtYsRFo6FIQYH7hU34MfLX46m/exec";
-var myStars=0, ratingTimer=null;
+var myStars=0, ratingTimer=null, ratingFinished=false;
 function renderStars(){var el=document.getElementById("stars");if(!el)return;var h="";
  for(var i=1;i<=5;i++)h+='<span onclick="setRating('+i+')" style="cursor:pointer;'+(i<=myStars?"":"filter:grayscale(1);opacity:.4")+'">⭐</span>';
  el.innerHTML=h;
  var saved=load("rojmel_myrating",0),info=document.getElementById("myRatingInfo");
  if(info)info.textContent=saved?("Aapki rating: "+"⭐".repeat(saved)+" ("+saved+"/5)"+(load("rojmel_ratingsent",0)?" · Bhej di gayi ✅":"")):"";}
 function setRating(n){myStars=n;var th=document.getElementById("rateThanks");if(th)th.style.display="none";var st=document.getElementById("rateStatus");if(st)st.textContent="";renderStars();}
-function ratingDone(res){if(ratingTimer){clearTimeout(ratingTimer);ratingTimer=null;}
- var btn=document.getElementById("rateBtn"),st=document.getElementById("rateStatus");
- if(btn){btn.disabled=false;btn.style.opacity="1";}
- if(res&&res.ok){save("rojmel_myrating",myStars);save("rojmel_ratingsent",1);renderStars();
-  var th=document.getElementById("rateThanks");if(th)th.style.display="block";if(st)st.textContent="";
-  var c=document.getElementById("rateComment");if(c)c.value="";}
- else if(st)st.textContent="⚠️ Rating nahi pahunchi. Dobara try karo.";}
 function submitRating(){if(!myStars){alert("Pehle stars pe tap karke rating do");return;}
  var cmt=(document.getElementById("rateComment").value||"").trim();
  var st=document.getElementById("rateStatus"),btn=document.getElementById("rateBtn");
  if(st)st.textContent="⏳ Rating bheji ja rahi hai...";
  if(btn){btn.disabled=true;btn.style.opacity=".55";}
- var old=document.getElementById("ratingJsonp");if(old)old.remove();
- var sc=document.createElement("script");sc.id="ratingJsonp";
- sc.onerror=function(){if(ratingTimer){clearTimeout(ratingTimer);ratingTimer=null;}
+ ratingFinished=false;
+ function finish(ok){if(ratingFinished)return;ratingFinished=true;
+  if(ratingTimer){clearTimeout(ratingTimer);ratingTimer=null;}
   if(btn){btn.disabled=false;btn.style.opacity="1";}
-  if(st)st.textContent="⚠️ Internet me dikkat hai. Dobara try karo.";};
- sc.src=RATING_URL+"?rating="+myStars+"&comment="+encodeURIComponent(cmt)+"&callback=ratingDone";
- document.body.appendChild(sc);
- ratingTimer=setTimeout(function(){if(btn){btn.disabled=false;btn.style.opacity="1";}
-  if(st)st.textContent="⚠️ Jawab nahi aaya. Internet check karke dobara try karo.";},20000);}
+  if(ok){save("rojmel_myrating",myStars);save("rojmel_ratingsent",1);renderStars();
+   var th=document.getElementById("rateThanks");if(th)th.style.display="block";if(st)st.textContent="";
+   var c=document.getElementById("rateComment");if(c)c.value="";}
+  else if(st)st.textContent="⚠️ Rating nahi pahunchi. Internet check karke dobara try karo.";}
+ ratingTimer=setTimeout(function(){finish(false);},25000);
+ var url=RATING_URL+"?rating="+myStars+"&comment="+encodeURIComponent(cmt);
+ try{
+  fetch(url,{method:"GET",mode:"no-cors",redirect:"follow",cache:"no-store"})
+   .then(function(){finish(true);})
+   .catch(function(){finish(false);});
+ }catch(e){finish(false);}}
 /* init */
 try{if(!load("rojmel_v10_mig",0)){localStorage.removeItem("rojmel_myrating");localStorage.removeItem("rojmel_ratingsent");save("rojmel_v10_mig",1);}}catch(e){}
-renderCats();refreshDateLbls();renderToday();renderAll();renderBackupInfo();
+renderCats();refreshDateLbls();renderToday();renderAll();renderBackupInfo();showStartupLogin();
 </script>
 </body>
 </html>
