@@ -93,6 +93,25 @@ nav button.sel{color:var(--primary-deep);background:var(--primary-tint)}
 .cb .d{font-size:10px;font-weight:700;color:var(--ink-soft)}
 .hidden{display:none!important}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ===== Desktop layout (PC / laptop) - mobile pe kuch nahi badlega ===== */
+@media (min-width:900px){
+ body{max-width:1240px}
+ main{padding:22px 26px 100px}
+ header{padding:16px 26px 12px}
+ #t-kharcha:not(.hidden){display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start}
+ #t-kharcha .card{margin-bottom:0}
+ #t-kharcha .card.grad{position:sticky;top:92px}
+ .catgrid{grid-template-columns:repeat(5,1fr)}
+ #t-hisab:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+ #t-hisab .mnav,#t-hisab .tot3{grid-column:1/-1}
+ #t-hisab .card{margin-bottom:0}
+ #histList{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;align-items:start}
+ #t-settings:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+ #t-settings .card{margin-bottom:0}
+ nav{max-width:1240px;grid-template-columns:repeat(4,1fr)}
+ nav button{font-size:15px;padding:10px}
+}
 </style>
 </head>
 <body>
