@@ -204,6 +204,7 @@ nav button.sel{color:var(--primary-deep);background:var(--primary-tint)}
 <button class="fchip" onclick="openCalMonth()">📅 Mahina</button></div>
 <div class="chips" id="fchips"></div>
 <p style="font-size:13px;color:var(--ink-soft);font-weight:700;margin-top:6px" id="histCount"></p>
+<p style="font-size:12px;color:var(--ink-soft);margin:2px 0 0">Date dabao, us din ka poora list khulega 👇</p>
 </div>
 <div id="histList"></div>
 </div>
@@ -294,7 +295,7 @@ Uske baad Rojmel ka icon home screen pe aa jayega 📱
 </div>
 <div class="card">
 <b style="font-size:17px">App Info ℹ️</b>
-<p style="font-size:13px;color:var(--ink-soft);margin-top:6px;line-height:1.7">रोज़मेल v3 · Saara data aapke phone me save hota hai.<br>Google Drive backup se data kabhi nahi khoyega.</p>
+<p style="font-size:13px;color:var(--ink-soft);margin-top:6px;line-height:1.7">रोज़मेल v4 · Saara data aapke phone me save hota hai.<br>Google Drive backup se data kabhi nahi khoyega.</p>
 </div>
 </div>
 </main>
@@ -687,6 +688,8 @@ function renderAll(){
   :'<p style="color:var(--ink-soft);font-size:14px">Is mahine koi kharcha nahi.</p>';
  renderHist(ex);renderReport();
 }
+var histOpen=null;
+function toggleHistDate(d){histOpen=(histOpen===d?null:d);renderAll();}
 function renderHist(ex){
  var fc=document.getElementById("fchips");fc.innerHTML="";
  var catsInMonth=[];ex.forEach(function(e){if(catsInMonth.indexOf(e.category)<0)catsInMonth.push(e.category);});
@@ -701,8 +704,9 @@ function renderHist(ex){
  var dates=Object.keys(by).sort().reverse();
  hl.innerHTML=dates.length?dates.map(function(d){
   var tot=by[d].reduce(function(s,e){return s+e.amount;},0);
-  return '<div class="card"><div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:4px"><span>'+dstr(d)+' · '+d+'</span><span style="color:var(--spend)">'+fmt(tot)+'</span></div>'
-  +by[d].map(function(e){var col=COL[e.category]||"#a16207";
+  var open=histOpen===d;
+  return '<div class="card"><div onclick="toggleHistDate(\''+d+'\')" style="display:flex;justify-content:space-between;align-items:center;font-weight:800;cursor:pointer"><span>'+(open?"▼":"▶")+" "+dstr(d)+' · '+d+'</span><span style="font-size:12px;color:var(--ink-soft);font-weight:400">'+by[d].length+' entries</span><span style="color:var(--spend)">'+fmt(tot)+'</span></div>'
+  +(open?by[d]:[]).map(function(e){var col=COL[e.category]||"#a16207";
    return '<div class="item"><div class="ic" style="background:'+col+'22"><span>'+catIcon(e.category)+'</span></div>'
    +'<div style="flex:1;min-width:0"><b>'+e.category+(catHindi(e.category)?" · "+catHindi(e.category):"")+'</b>'+(e.note?'<br><small style="color:var(--ink-soft)">'+e.note+'</small>':"")
    +'</div><b>'+fmt(e.amount)+'</b><button class="edt" onclick="openEdit(\''+e.id+'\')">✏️</button><button class="del" onclick="delExp(\''+e.id+'\')">🗑</button></div>';}).join("")+'</div>';
